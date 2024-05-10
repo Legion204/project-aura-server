@@ -30,6 +30,24 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
+
+    // database collections
+    const foodCollection = client.db("foodDB").collection("foods");
+
+    // post added food data to database
+    app.post('/add_food', async (req, res) => {
+      const addedFood = req.body
+      const result = await foodCollection.insertOne(addedFood);
+      res.send(result);
+    });
+
+
+    // get foods for home page with highest  quantity
+    app.get('/featured_foods', async (req, res) => {
+      const result = await foodCollection.aggregate([{ $addFields: { quantityInt: { $toInt: "$quantity" } } }, { $sort: { quantityInt: -1 } }]).toArray();
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -42,10 +60,10 @@ run().catch(console.dir);
 
 
 
-app.get('/', (req,res)=>{
-    res.send("project-aura server is running")
+app.get('/', (req, res) => {
+  res.send("project-aura server is running")
 });
 
-app.listen(port,()=>{
-    console.log(`project-aura server is running on port ${port}`);
+app.listen(port, () => {
+  console.log(`project-aura server is running on port ${port}`);
 })
