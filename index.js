@@ -33,16 +33,17 @@ async function run() {
 
     // database collections
     const foodCollection = client.db("foodDB").collection("foods");
+    const requestedFoodCollection = client.db("foodDB").collection("requestedFoods");
 
     // service related API's
 
     // get foods for home page with highest  quantity
     app.get('/featured_foods', async (req, res) => {
-      const result = await foodCollection.aggregate([{ $addFields: { quantityInt: { $toInt: "$quantity" } } }, { $sort: { quantityInt: -1 } }]).toArray();
+      const result = await foodCollection.aggregate([{ $match: { foodStatus: "Available" } },{ $addFields: { quantityInt: { $toInt: "$quantity" } } }, { $sort: { quantityInt: -1 } }]).toArray();
       res.send(result);
     });
-    
-    
+
+
     // post added food data to database
     app.post('/add_food', async (req, res) => {
       const addedFood = req.body
@@ -53,19 +54,37 @@ async function run() {
 
 
     // get data for available Foods page
-    app.get("/available_foods",async (req,res)=>{
-      const query = {foodStatus:"Available"}
-      const result= await foodCollection.find(query).toArray();
+    app.get("/available_foods", async (req, res) => {
+      const query = { foodStatus: "Available" }
+      const result = await foodCollection.find(query).toArray();
       res.send(result);
     });
 
 
     // get single food data for food details page
-    app.get("/food_details/:id",async(req,res)=>{
+    app.get("/food_details/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result= await foodCollection.findOne(query);
+      const query = { _id: new ObjectId(id) }
+      const result = await foodCollection.findOne(query);
       res.send(result);
+    });
+
+    // update single food status in data base
+    app.put("/update_status/:id", async (req, res) => {
+      const id = req.params.id
+      const query= { _id: new ObjectId(id) }
+      const options = {upsert:true}
+      const updatedFoodStatus = req.body
+      const doc ={$set:{foodStatus:updatedFoodStatus.changedFoodStatus}}
+      const result=await foodCollection.updateOne(query,doc,options);
+      res.send(result);
+    });
+
+    // post requested food data in database
+    app.post("/requested_foods",async(req,res)=>{
+      const requestedFood=req.body
+      const result =await requestedFoodCollection.insertOne(requestedFood);
+      res.send(result)
     });
 
 
