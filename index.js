@@ -14,7 +14,7 @@ app.use(express.json());
 
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASS}@cluster0.tba2ihq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -34,6 +34,15 @@ async function run() {
     // database collections
     const foodCollection = client.db("foodDB").collection("foods");
 
+    // service related API's
+
+    // get foods for home page with highest  quantity
+    app.get('/featured_foods', async (req, res) => {
+      const result = await foodCollection.aggregate([{ $addFields: { quantityInt: { $toInt: "$quantity" } } }, { $sort: { quantityInt: -1 } }]).toArray();
+      res.send(result);
+    });
+    
+    
     // post added food data to database
     app.post('/add_food', async (req, res) => {
       const addedFood = req.body
@@ -42,11 +51,24 @@ async function run() {
     });
 
 
-    // get foods for home page with highest  quantity
-    app.get('/featured_foods', async (req, res) => {
-      const result = await foodCollection.aggregate([{ $addFields: { quantityInt: { $toInt: "$quantity" } } }, { $sort: { quantityInt: -1 } }]).toArray();
+
+    // get data for available Foods page
+    app.get("/available_foods",async (req,res)=>{
+      const query = {foodStatus:"Available"}
+      const result= await foodCollection.find(query).toArray();
       res.send(result);
     });
+
+
+    // get single food data for food details page
+    app.get("/food_details/:id",async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result= await foodCollection.findOne(query);
+      res.send(result);
+    });
+
+
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
