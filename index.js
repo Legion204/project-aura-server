@@ -39,7 +39,7 @@ async function run() {
 
     // get foods for home page with highest  quantity
     app.get('/featured_foods', async (req, res) => {
-      const result = await foodCollection.aggregate([{ $match: { foodStatus: "Available" } },{ $addFields: { quantityInt: { $toInt: "$quantity" } } }, { $sort: { quantityInt: -1 } }]).toArray();
+      const result = await foodCollection.aggregate([{ $match: { foodStatus: "Available" } }, { $addFields: { quantityInt: { $toInt: "$quantity" } } }, { $sort: { quantityInt: -1 } }]).toArray();
       res.send(result);
     });
 
@@ -72,35 +72,65 @@ async function run() {
     // update single food status in data base
     app.put("/update_status/:id", async (req, res) => {
       const id = req.params.id
-      const query= { _id: new ObjectId(id) }
-      const options = {upsert:true}
+      const query = { _id: new ObjectId(id) }
+      const options = { upsert: true }
       const updatedFoodStatus = req.body
-      const doc ={$set:{foodStatus:updatedFoodStatus.changedFoodStatus}}
-      const result=await foodCollection.updateOne(query,doc,options);
+      const doc = { $set: { foodStatus: updatedFoodStatus.changedFoodStatus } }
+      const result = await foodCollection.updateOne(query, doc, options);
       res.send(result);
     });
 
     // post requested food data in database
-    app.post("/requested_foods",async(req,res)=>{
-      const requestedFood=req.body
-      const result =await requestedFoodCollection.insertOne(requestedFood);
+    app.post("/requested_foods", async (req, res) => {
+      const requestedFood = req.body
+      const result = await requestedFoodCollection.insertOne(requestedFood);
       res.send(result)
     });
 
     // get data of users food requests
-    app.get("/requested_foods",async(req,res)=>{
-      const email= req.query.email
-      const query= {userEmail:email}
-      const result= await requestedFoodCollection.find(query).toArray();
+    app.get("/requested_foods", async (req, res) => {
+      const email = req.query.email
+      const query = { userEmail: email }
+      const result = await requestedFoodCollection.find(query).toArray();
       res.send(result)
     });
 
     // get data for my added foods from database
-    app.get("/my_added_foods",async(req,res)=>{
-      const email= req.query.email
-      const query = {donatorEmail:email}
+    app.get("/my_added_foods", async (req, res) => {
+      const email = req.query.email
+      const query = { donatorEmail: email }
       const result = await foodCollection.find(query).toArray();
       res.send(result);
+    });
+
+    // api for delete a data from database
+    app.delete("/available_foods/:id", async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await foodCollection.deleteOne(query)
+      res.send(result)
+    });
+
+    // update user added food data
+    app.put("/available_foods/:id", async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const options = { upsert: true }
+      const updatedFoodData = req.body
+      const doc = {
+        $set: {
+          foodName: updatedFoodData.foodName,
+          imageUrl: updatedFoodData.imageUrl,
+          pickupLocation: updatedFoodData.pickupLocation,
+          quantity: updatedFoodData.quantity,
+          exp_date: updatedFoodData.exp_date,
+          foodStatus: updatedFoodData.foodStatus,
+          additional_notes: updatedFoodData.additional_notes
+        }
+      }
+      const result = await foodCollection.updateOne(query, doc, options);
+      res.send(result);
+
     });
 
 
