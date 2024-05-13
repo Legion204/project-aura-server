@@ -87,6 +87,13 @@ async function run() {
       res.send(result)
     });
 
+    // get data of users food requests
+    app.get("/requested_foods",async(req,res)=>{
+      const email= req.query.email
+      const query= {userEmail:email}
+      const result= await requestedFoodCollection.find(query).toArray();
+      res.send(result)
+    })
 
 
     // Send a ping to confirm a successful connection
