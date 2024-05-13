@@ -93,7 +93,15 @@ async function run() {
       const query= {userEmail:email}
       const result= await requestedFoodCollection.find(query).toArray();
       res.send(result)
-    })
+    });
+
+    // get data for my added foods from database
+    app.get("/my_added_foods",async(req,res)=>{
+      const email= req.query.email
+      const query = {donatorEmail:email}
+      const result = await foodCollection.find(query).toArray();
+      res.send(result);
+    });
 
 
     // Send a ping to confirm a successful connection
