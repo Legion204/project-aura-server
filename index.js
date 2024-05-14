@@ -1,5 +1,8 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
 const port = process.env.PORT || 5000;
@@ -7,14 +10,42 @@ const port = process.env.PORT || 5000;
 
 // middleware
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://project-aura-7b690.web.app",
+    "https://project-aura-7b690.firebaseapp.com",
+  ],
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser())
+
+
+// custom middleware
+
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token
+  console.log(token);
+  if (!token) {
+    return res.status(401).send({ message: 'not authorized' })
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    // error
+    if (err) {
+      console.log(err);
+      return res.status(401).send({ message: 'unauthorized' })
+    }
+    // if token is valid then decode
+    console.log(decoded);
+    req.user = decoded;
+    next()
+  })
+}
 
 
 
 
-
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASS}@cluster0.tba2ihq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -34,6 +65,22 @@ async function run() {
     // database collections
     const foodCollection = client.db("foodDB").collection("foods");
     const requestedFoodCollection = client.db("foodDB").collection("requestedFoods");
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    };
+
+    // JWT related API's
+    app.post("/jwt", async (req, res) => {
+      const user = req.body
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '7d' })
+
+      res.cookie('token', token, cookieOptions).send({ success: true });
+
+    });
 
     // service related API's
 
@@ -88,16 +135,25 @@ async function run() {
     });
 
     // get data of users food requests
-    app.get("/requested_foods", async (req, res) => {
+    app.get("/requested_foods", verifyToken, async (req, res) => {
       const email = req.query.email
+      // verify user
+      if (req.query.email !== req.user.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+
       const query = { userEmail: email }
       const result = await requestedFoodCollection.find(query).toArray();
       res.send(result)
     });
 
     // get data for my added foods from database
-    app.get("/my_added_foods", async (req, res) => {
+    app.get("/my_added_foods", verifyToken, async (req, res) => {
       const email = req.query.email
+      // verify user
+      if (req.query.email !== req.user.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
       const query = { donatorEmail: email }
       const result = await foodCollection.find(query).toArray();
       res.send(result);
